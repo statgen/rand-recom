@@ -1,5 +1,5 @@
-#rand-recom
-
+# rand-recom
+A tool for randomly applying artificial recombination.
 
 ## Build
 ```
