@@ -11,8 +11,10 @@ make
 
 ## Usage
 ```
+NRECORDS=$(bcftools query -f'%POS\n' chr20.bcf | wc -l)
+
 # (target_seg_length_bp * records_in_chr20) / chr20_length_bp
-RECOM_PARAM=$(( (25000000 * 9291832) / 64444167 ))
+RECOM_PARAM=$(( (25000000 * NRECORDS) / 64444167 ))
 
 RANDOM_SEED=12345
 
