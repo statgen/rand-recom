@@ -15,6 +15,8 @@
 #include <savvy/reader.hpp>
 #include <savvy/writer.hpp>
 
+#include "prog_args.hpp"
+
 template<typename Prng>
 void increment_rand(std::vector<std::size_t>::iterator& it, std::vector<std::size_t>& vec, Prng& r)
 {
@@ -36,23 +38,31 @@ void defer_rand(std::vector<std::size_t>::iterator& it, std::vector<std::size_t>
 
 int main(int argc, char** argv)
 {
-  if (argc < 2)
-    return std::cerr << "Error: first argument must be random seed\n", EXIT_FAILURE;
+  prog_args args;
+  if (!args.parse(argc, argv))
+  {
+    args.print_usage(std::cerr);
+    return EXIT_FAILURE;
+  }
 
-  if (argc < 3)
-    return std::cerr << "Error: second arguiment must be recom target\n", EXIT_FAILURE;
+  if (args.help_is_set())
+  {
+    args.print_usage(std::cout);
+    return EXIT_SUCCESS;
+  }
 
-  std::int64_t seed = std::atoll(argv[1]);
-  float target_segement_length = std::atof(argv[2]);
+  if (args.version_is_set())
+  {
+    std::cout << "rand-recom v" << RAND_RECOM_VERSION << std::endl;
+    return EXIT_SUCCESS;
+  }
 
-  savvy::reader in(argc > 3 ? argv[3] : "/dev/stdin");
+  savvy::reader in(args.input_path());
   if (!in)
     return std::cerr << "Error: could not open input file\n", EXIT_FAILURE;
 
   if (in.samples().empty())
    return std::cerr << "Error: no samples in input file\n", EXIT_FAILURE;
-
-  bool ensure_uniform = false;
 
   //std::size_t n_haps = in.samples().size() * 2; // Assuming diploid
 
@@ -89,7 +99,7 @@ int main(int argc, char** argv)
   for (std::size_t i = 0; i < ids.size(); ++i)
     ids[i] = std::to_string(i);
 
-  savvy::writer out("/dev/stdout", savvy::file::format::bcf, in.headers(), ids, 0);
+  savvy::writer out(args.output_path(), args.output_format(), in.headers(), ids, args.output_compression_level());
 
   std::vector<std::int8_t> gt, gt_shuffled;
   savvy::variant rec;
@@ -101,10 +111,10 @@ int main(int argc, char** argv)
   if (chrom_length == 0)
     return std::cerr << "Error: contig not recognized (unknown length)\n", EXIT_FAILURE;
 
-  double recom_prob = 0.5 / target_segement_length; // Using 0.5 because two haps are switched per event.
+  double recom_prob = 0.5 / args.target_segment_length(); // Using 0.5 because two haps are switched per event.
   std::cerr << "Recom prob: " << recom_prob << std::endl;
   //std::default_random_engine prng(seed);
-  std::mt19937_64 prng(seed);
+  std::mt19937_64 prng(args.seed());
   std::geometric_distribution<std::int64_t> geom_dist(recom_prob);
 
   std::vector<std::size_t> random_hap_idx;
@@ -167,7 +177,7 @@ int main(int argc, char** argv)
     }
 
     std::size_t h1;
-    if (ensure_uniform)
+    if (args.uniform())
     {
       h1 = *random_hap_idx_it;
       increment_rand(random_hap_idx_it, random_hap_idx, prng);

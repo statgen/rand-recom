@@ -7,7 +7,7 @@ endif()
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_definitions(-DVERSION="${PROJECT_VERSION}")
+add_definitions(-DRAND_RECOM_VERSION="${PROJECT_VERSION}")
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;${CMAKE_FIND_LIBRARY_SUFFIXES}") # Prefer libz.a when both are available
 
