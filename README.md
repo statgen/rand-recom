@@ -1,23 +1,20 @@
 # rand-recom
 A tool for randomly applying artificial recombination.
 
-## Build
+## Build and Install
 ```
 cmake -P cmake/get-dependencies.cmake cget
 mkdir build; cd build
 cmake -DCMAKE_PREFIX_PATH="../cget" -DCMAKE_CXX_FLAGS="-I../cget/include" -DCMAKE_BUILD_TYPE=Release ..
 make
+make install
 ```
 
 ## Usage
 ```
-NRECORDS=$(bcftools query -f'\n' chr20.bcf | wc -l)
-
-# (target_seg_length_bp * records_in_chr20) / chr20_length_bp
-RECOM_PARAM=$(( (25000000 * NRECORDS) / 64444167 ))
-
+TARGET_SEGMENT_LENGTH=25000000
 RANDOM_SEED=12345
 
-# Currently defaults to uncompressed BCF output to stdout. Will add CLI parameters for output later.
-rand-recom $RANDOM_SEED $RECOM_PARAM input.bcf | bcftools view -Ob -o out_file.bcf
+# Recombination will occur once every $TARGET_SEGMENT_LENGTH on average
+rand-recom input.bcf --seed $RANDOM_SEED --target-length $TARGET_SEGMENT_LENGTH -O bcf -o output.bcf
 ```
