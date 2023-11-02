@@ -89,7 +89,7 @@ int main(int argc, char** argv)
   for (std::size_t i = 0; i < ids.size(); ++i)
     ids[i] = std::to_string(i);
 
-  savvy::writer out("/dev/null", savvy::file::format::bcf, in.headers(), ids, 0);
+  savvy::writer out("/dev/stdout", savvy::file::format::bcf, in.headers(), ids, 0);
 
   std::vector<std::int8_t> gt, gt_shuffled;
   savvy::variant rec;
