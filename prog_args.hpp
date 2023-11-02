@@ -24,13 +24,13 @@ public:
   prog_args() :
     getopt_wrapper("Usage: rand-recom [opts ...] input.{sav,bcf,vcf.gz} --seed <integer> --target-length <bp_length>",
       {
-        {"uniform", "", 'u', "Enforces uniform distribution of switch counts per haplotype"},
         {"help", "", 'h', "Print usage"},
         {"version", "", 'v', "Print version"},
         {"output", "<file>", 'o', "Output path (default: /dev/stdout)"},
-        {"output-format", "<string>", 'O', "Output file format (default: input file format)"},
+        {"output-format", "<string>", 'O', "Output file format (bcf, sav, vcf.gz, ubcf, usav, or vcf; default: bcf)"},
         {"seed", "<integer>", 's', "Seed for pseudorandom number generator"},
         {"target-length", "<integer>", 't', "Target segment length in bp"},
+        {"uniform", "", 'u', "Enforces uniform distribution of switch counts per haplotype"},
       })
   {
   }

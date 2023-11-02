@@ -66,6 +66,7 @@ int main(int argc, char** argv)
 
   //std::size_t n_haps = in.samples().size() * 2; // Assuming diploid
 
+  // TODO: add option to override contig lengths with map file
   std::unordered_map<std::string, std::size_t> contig_to_size = {
     {"chr1", 248956422},
     {"chr2", 242193529},
@@ -160,20 +161,6 @@ int main(int argc, char** argv)
   std::shuffle(random_hap_idx.begin(), random_hap_idx.end(), prng);
   auto random_hap_idx_it = random_hap_idx.begin();
 
-  for (std::size_t i = 0; i < gt.size(); ++i)
-  {
-    if (!savvy::typed_value::is_end_of_vector(gt[i]))
-      std::swap(hap_mapping[i], hap_mapping[*(random_hap_idx_it++)]);
-  }
-
-  std::shuffle(random_hap_idx.begin(), random_hap_idx.end(), prng);
-  random_hap_idx_it = random_hap_idx.begin();
-
-
-
-
-
-
   struct switch_details
   {
     std::size_t bp;
@@ -183,6 +170,18 @@ int main(int argc, char** argv)
   std::queue<switch_details> switch_queue;
 
   std::cerr << "Building switch queue ..." << std::endl;
+  for (std::size_t i = 0; i < gt.size(); ++i)
+  {
+    if (!savvy::typed_value::is_end_of_vector(gt[i]))
+    {
+      std::swap(hap_mapping[i], hap_mapping[*(random_hap_idx_it++)]);
+      //switch_queue.push(switch_details{0, i, *(random_hap_idx_it++)}); // TODO: add options to write/read switch_queue to/from file.
+    }
+  }
+
+  std::shuffle(random_hap_idx.begin(), random_hap_idx.end(), prng);
+  random_hap_idx_it = random_hap_idx.begin();
+
   std::int64_t geom_draw = geom_dist(prng);
   std::size_t bp_pos = 1;
   std::size_t hap_pos = 0;
@@ -246,52 +245,7 @@ int main(int argc, char** argv)
 
     out << rec;
   } while (in >> rec);
-#if 0
-  do //while (in >> rec)
-  {
-    std::int64_t remaining_hap_positions_in_row = random_hap_idx.size();
 
-    while (true)
-    {
-      if (geom_draw >= remaining_hap_positions_in_row)
-      {
-        geom_draw -= remaining_hap_positions_in_row;
-        break;
-      }
-      else
-      {
-        std::size_t hap1 = *random_hap_idx_it;
-        increment_rand(random_hap_idx_it, random_hap_idx, prng);
-
-        std::size_t hap2 = *random_hap_idx_it;
-        increment_rand(random_hap_idx_it, random_hap_idx, prng);
-
-        // if (hap1 != hap2) This will never happen with shuffle approach
-        {
-          ++hap_switch_cnts[hap1];
-          ++hap_switch_cnts[hap2];
-          std::swap(hap_mapping[hap1], hap_mapping[hap2]);
-        }
-      
-        remaining_hap_positions_in_row -= 1 + geom_draw;
-        geom_draw = geom_dist(prng);
-        if (geom_draw < 0ll) throw std::runtime_error("should not be negative");
-      }
-    }
-
-    rec.get_format("GT", gt);
-    if (gt.size() != hap_mapping.size())
-      return std::cerr << "Error: inconsistent ploidy\n", EXIT_FAILURE;
-
-    gt_shuffled.resize(gt.size());
-    for (std::size_t i = 0; i < gt.size(); ++i)
-      gt_shuffled[hap_mapping[i]] = gt[i];
-    
-    rec.set_format("GT", gt_shuffled);
-   
-    out << rec;
-  } while (in >> rec);
-#endif
   if (in.bad() || !out.good())
     return std::cerr << "Error: I/O failure\n", EXIT_FAILURE;
 
