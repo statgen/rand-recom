@@ -8,9 +8,6 @@
 #include <cstdlib>
 #include <random>
 #include <algorithm>
-#include <unordered_map>
-#include <queue>
-#include <tuple>
 
 #include <savvy/reader.hpp>
 #include <savvy/writer.hpp>
@@ -64,63 +61,6 @@ int main(int argc, char** argv)
   if (in.samples().empty())
    return std::cerr << "Error: no samples in input file\n", EXIT_FAILURE;
 
-  //std::size_t n_haps = in.samples().size() * 2; // Assuming diploid
-
-  // TODO: add option to override contig lengths with map file
-  std::unordered_map<std::string, std::size_t> contig_to_size = {
-    {"chr1", 248956422},
-    {"chr2", 242193529},
-    {"chr3", 198295559},
-    {"chr4", 190214555},
-    {"chr5", 181538259},
-    {"chr6", 170805979},
-    {"chr7", 159345973},
-    {"chr8", 145138636},
-    {"chr9", 138394717},
-    {"chr10", 133797422},
-    {"chr11", 135086622},
-    {"chr12", 133275309},
-    {"chr13", 114364328},
-    {"chr14", 107043718},
-    {"chr15", 101991189},
-    {"chr16", 90338345},
-    {"chr17", 83257441},
-    {"chr18", 80373285},
-    {"chr19", 58617616},
-    {"chr20", 64444167},
-    {"chr21", 46709983},
-    {"chr22", 50818468},
-    {"chrX", 156040895},
-    {"chrY", 57227415},
-    {"chrM", 16569},
-    {"1", 249250621},
-    {"2", 243199373},
-    {"3", 198022430},
-    {"4", 191154276},
-    {"5", 180915260},
-    {"6", 171115067},
-    {"7", 159138663},
-    {"8", 146364022},
-    {"9", 141213431},
-    {"10", 135534747},
-    {"11", 135006516},
-    {"12", 133851895},
-    {"13", 115169878},
-    {"14", 107349540},
-    {"15", 102531392},
-    {"16", 90354753},
-    {"17", 81195210},
-    {"18", 78077248},
-    {"19", 59128983},
-    {"20", 63025520},
-    {"21", 48129895},
-    {"22", 51304566},
-    {"X", 155270560},
-    {"Y", 59373566},
-    {"MT", 16571}};
-
-
-
   auto ids = in.samples();
   for (std::size_t i = 0; i < ids.size(); ++i)
     ids[i] = std::to_string(i);
@@ -133,13 +73,9 @@ int main(int argc, char** argv)
     return std::cerr << "Error: empty VCF\n", EXIT_FAILURE;
   rec.get_format("GT", gt);
 
-  std::size_t chrom_length = contig_to_size[rec.chromosome()];
-  if (chrom_length == 0)
-    return std::cerr << "Error: contig not recognized (unknown length)\n", EXIT_FAILURE;
-
   double recom_prob = 0.5 / args.target_segment_length(); // Using 0.5 because two haps are switched per event.
   std::cerr << "Recom prob: " << recom_prob << std::endl;
-  //std::default_random_engine prng(seed);
+
   std::mt19937_64 prng(args.seed());
   std::geometric_distribution<std::int64_t> geom_dist(recom_prob);
 
@@ -152,8 +88,6 @@ int main(int argc, char** argv)
   }
 
   std::vector<std::size_t> non_eov_mapping = random_hap_idx;
-
-
   std::vector<std::size_t> hap_mapping(gt.size());
   std::iota(hap_mapping.begin(), hap_mapping.end(), 0);
   std::vector<std::size_t> hap_switch_cnts(gt.size());
@@ -161,78 +95,67 @@ int main(int argc, char** argv)
   std::shuffle(random_hap_idx.begin(), random_hap_idx.end(), prng);
   auto random_hap_idx_it = random_hap_idx.begin();
 
-  struct switch_details
-  {
-    std::size_t bp;
-    std::size_t hap1;
-    std::size_t hap2;
-  };
-  std::queue<switch_details> switch_queue;
-
-  std::cerr << "Building switch queue ..." << std::endl;
   for (std::size_t i = 0; i < gt.size(); ++i)
   {
     if (!savvy::typed_value::is_end_of_vector(gt[i]))
-    {
       std::swap(hap_mapping[i], hap_mapping[*(random_hap_idx_it++)]);
-      //switch_queue.push(switch_details{0, i, *(random_hap_idx_it++)}); // TODO: add options to write/read switch_queue to/from file.
-    }
   }
 
   std::shuffle(random_hap_idx.begin(), random_hap_idx.end(), prng);
   random_hap_idx_it = random_hap_idx.begin();
 
   std::int64_t geom_draw = geom_dist(prng);
-  std::size_t bp_pos = 1;
-  std::size_t hap_pos = 0;
-  while (bp_pos < chrom_length)
-  {
-    if (hap_pos + geom_draw < random_hap_idx.size())
-    {
-      hap_pos += geom_draw;
-    }
-    else
-    {
-      assert(hap_pos <= random_hap_idx.size());
-      assert(geom_draw >= random_hap_idx.size() - hap_pos);
-      geom_draw -= random_hap_idx.size() - hap_pos;
-      bp_pos += geom_draw / random_hap_idx.size();
-      hap_pos = geom_draw % random_hap_idx.size();
-    }
+  std::size_t bp_pos = geom_draw / random_hap_idx.size();
+  std::size_t hap_pos = geom_draw % random_hap_idx.size();
 
-    std::size_t h1;
-    if (args.uniform())
-    {
-      h1 = *random_hap_idx_it;
-      increment_rand(random_hap_idx_it, random_hap_idx, prng);
-    }
-    else
-    {
-      h1 = non_eov_mapping[hap_pos];
-      if (*random_hap_idx_it == h1)
-        increment_rand(random_hap_idx_it, random_hap_idx, prng); //defer_rand(random_hap_idx_it, random_hap_idx);
-    }
-
-    std::size_t h2 = *random_hap_idx_it;
-    increment_rand(random_hap_idx_it, random_hap_idx, prng);
-
-    switch_queue.push(switch_details{bp_pos, h1, h2});
-
-    ++hap_pos;
-    geom_draw = geom_dist(prng);
-  }
-
-  std::cerr << "Processing genotypes ..." << std::endl;
   do
   {
-    while (switch_queue.size() && switch_queue.front().bp < rec.pos())
+    while (bp_pos < rec.pos())
     {
-      ++hap_switch_cnts[switch_queue.front().hap1];
-      ++hap_switch_cnts[switch_queue.front().hap2];
-      std::swap(hap_mapping[switch_queue.front().hap1], hap_mapping[switch_queue.front().hap2]);
-      switch_queue.pop();
-    }
+      std::size_t h1;
+      if (args.uniform())
+      {
+        h1 = *random_hap_idx_it;
+        increment_rand(random_hap_idx_it, random_hap_idx, prng);
+      }
+      else
+      {
+        h1 = non_eov_mapping[hap_pos];
+        if (*random_hap_idx_it == h1)
+          increment_rand(random_hap_idx_it, random_hap_idx, prng); //defer_rand(random_hap_idx_it, random_hap_idx);
+      }
 
+      std::size_t h2 = *random_hap_idx_it;
+      increment_rand(random_hap_idx_it, random_hap_idx, prng);
+
+      ++hap_switch_cnts[h1];
+      ++hap_switch_cnts[h2];
+      std::swap(hap_mapping[h1], hap_mapping[h2]);
+
+      geom_draw = geom_dist(prng) + 1; // +1 increments hap_pos
+
+      if (hap_pos + geom_draw < random_hap_idx.size())
+      {
+        hap_pos += geom_draw;
+      }
+      else
+      {
+        assert(hap_pos <= random_hap_idx.size());
+        assert(geom_draw >= random_hap_idx.size() - hap_pos);
+        geom_draw -= random_hap_idx.size() - hap_pos;
+        bp_pos += geom_draw / random_hap_idx.size();
+        hap_pos = geom_draw % random_hap_idx.size();
+      }
+    }
+#if 0
+    // This is for testing chunked panel creation.
+    if (rec.pos() >= 3400001)
+    {
+      for (auto it = hap_mapping.begin(); it != hap_mapping.end(); ++it)
+        std::cout << *it << "\n";
+      return EXIT_FAILURE;
+    }
+#endif
     rec.get_format("GT", gt);
     if (gt.size() != hap_mapping.size())
       return std::cerr << "Error: inconsistent ploidy\n", EXIT_FAILURE;

@@ -11,7 +11,6 @@ class prog_args : public getopt_wrapper
 private:
   std::string input_path_ = "/dev/stdin";
   std::string recom_map_path_;
-  std::string contig_map_path_;
   std::string output_path_ = "/dev/stdout";
   savvy::file::format output_format_ = savvy::file::format::bcf;
   int output_compression_level_ = 6;
@@ -38,7 +37,6 @@ public:
   const std::string& input_path() const { return input_path_; }
   const std::string& output_path() const { return output_path_; }
   const std::string& recom_map_path() const { return recom_map_path_; }
-  const std::string& contig_map_path() const { return contig_map_path_; }
 
   std::int64_t seed() const { return seed_; }
   std::int64_t target_segment_length() const { return target_segment_length_; }
