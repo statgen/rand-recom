@@ -138,8 +138,8 @@ public:
     if (!seed_)
       return std::cerr << "Error: must provide a non-zero --seed argument\n", false;
 
-    if (!target_segment_length_)
-      return std::cerr << "Error: must provide a --target-length argument\n", false;
+    //if (!target_segment_length_)
+    //  return std::cerr << "Error: must provide a --target-length argument\n", false;
 
     return true;
   }

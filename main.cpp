@@ -73,11 +73,7 @@ int main(int argc, char** argv)
     return std::cerr << "Error: empty VCF\n", EXIT_FAILURE;
   rec.get_format("GT", gt);
 
-  double recom_prob = 0.5 / args.target_segment_length(); // Using 0.5 because two haps are switched per event.
-  std::cerr << "Recom prob: " << recom_prob << std::endl;
-
   std::mt19937_64 prng(args.seed());
-  std::geometric_distribution<std::int64_t> geom_dist(recom_prob);
 
   std::vector<std::size_t> random_hap_idx;
   random_hap_idx.reserve(gt.size());
@@ -101,8 +97,34 @@ int main(int argc, char** argv)
       std::swap(hap_mapping[i], hap_mapping[*(random_hap_idx_it++)]);
   }
 
+  if (args.target_segment_length() <= 0)
+  {
+    do
+    {
+      rec.get_format("GT", gt);
+      if (gt.size() != hap_mapping.size())
+        return std::cerr << "Error: inconsistent ploidy\n", EXIT_FAILURE;
+
+      gt_shuffled.resize(gt.size());
+      for (std::size_t i = 0; i < gt.size(); ++i)
+        gt_shuffled[hap_mapping[i]] = gt[i];
+
+      rec.set_format("GT", gt_shuffled);
+
+      out << rec;
+    } while (in >> rec);
+
+    if (in.bad() || !out.good())
+      return std::cerr << "Error: I/O failure\n", EXIT_FAILURE;
+    return EXIT_SUCCESS;
+  }
+
   std::shuffle(random_hap_idx.begin(), random_hap_idx.end(), prng);
   random_hap_idx_it = random_hap_idx.begin();
+
+  double recom_prob = 0.5 / args.target_segment_length(); // Using 0.5 because two haps are switched per event.
+  std::cerr << "Recom prob: " << recom_prob << std::endl;
+  std::geometric_distribution<std::int64_t> geom_dist(recom_prob);
 
   std::int64_t geom_draw = geom_dist(prng);
   std::size_t bp_pos = geom_draw / random_hap_idx.size();
