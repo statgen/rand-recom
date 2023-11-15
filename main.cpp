@@ -66,11 +66,13 @@ int main(int argc, char** argv)
     ids[i] = std::to_string(i);
 
   savvy::writer out(args.output_path(), args.output_format(), in.headers(), ids, args.output_compression_level());
+  if (!out)
+    return std::cerr << "Error: could not open output VCF\n", EXIT_FAILURE;
 
   std::vector<std::int8_t> gt, gt_shuffled;
   savvy::variant rec;
   if (!(in >> rec))
-    return std::cerr << "Error: empty VCF\n", EXIT_FAILURE;
+    return std::cerr << "Warning: empty VCF\n", EXIT_SUCCESS;
   rec.get_format("GT", gt);
 
   std::mt19937_64 prng(args.seed());
