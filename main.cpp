@@ -72,7 +72,11 @@ int main(int argc, char** argv)
   std::vector<std::int8_t> gt, gt_shuffled;
   savvy::variant rec;
   if (!(in >> rec))
+  {
+    if (in.bad())
+      return std::cerr << "Error: read failure\n", EXIT_FAILURE;
     return std::cerr << "Warning: empty VCF\n", EXIT_SUCCESS;
+  }
   rec.get_format("GT", gt);
 
   std::mt19937_64 prng(args.seed());
